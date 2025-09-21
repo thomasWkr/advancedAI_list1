@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
                 cout << "Número invalido de tiles" << endl;
                 break;
             }
-            cout << "Manhattan: " << manhattan_distance_8(root_state) << endl;
+            resolve_puzzle(root_state, alg);
             j = 0;
         }
         else
@@ -27,25 +27,6 @@ int main(int argc, char *argv[])
             j++;
         }
     }
-
-    // // Create a std::vector of integers
-    // vector<int> dynamicVector;
-
-    // // Preencher o vector de forma dinâmica
-    // for (int i = 0; i < 10; ++i)
-    // {
-    //     dynamicVector.push_back(i * 10);
-    // }
-
-    // // Print the vector elements
-    // cout << "Vector elements: ";
-    // for (int i = 0; i < 10; ++i)
-    // {
-    //     cout << dynamicVector[i] << " ";
-    // }
-    // cout << endl;
-
-    // std::vector automatically handles memory deallocation when it goes out of scope
 
     return 0;
 }
