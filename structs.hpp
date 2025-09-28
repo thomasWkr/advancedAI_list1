@@ -15,6 +15,8 @@ struct search_node
 {
     search_node *parent = NULL;
     short path_cost = 0;
+    short tiebreaker = 0;
+    short f_value = 0;
     string state;
 };
 
@@ -104,18 +106,16 @@ int state_visited_distance(string state)
     return visited_states[state];
 }
 
-void min_heap_insert_gbfs(search_node *node)
+void min_heap_insert(search_node *node)
 {
     nodes_border.push_back(node);
     int new_index = nodes_border.size() - 1;
-    int heuristic_new_element = manhattan_distance(nodes_border[new_index]->state);
     while (new_index)
     {
         int father_index = floor((new_index - 1) / 2);
-        int heuristic_father = manhattan_distance(nodes_border[father_index]->state);
-        if (heuristic_father == heuristic_new_element)
+        if (nodes_border[new_index]->f_value == nodes_border[father_index]->f_value)
         {
-            if (nodes_border[new_index]->path_cost >= nodes_border[father_index]->path_cost)
+            if (nodes_border[new_index]->tiebreaker <= nodes_border[father_index]->tiebreaker)
             {
                 swap(nodes_border[father_index], nodes_border[new_index]);
                 new_index = father_index;
@@ -125,7 +125,7 @@ void min_heap_insert_gbfs(search_node *node)
                 break;
             }
         }
-        else if (heuristic_new_element < heuristic_father)
+        else if (nodes_border[new_index]->f_value < nodes_border[father_index]->f_value)
         {
             swap(nodes_border[father_index], nodes_border[new_index]);
             new_index = father_index;
@@ -135,40 +135,7 @@ void min_heap_insert_gbfs(search_node *node)
     }
 }
 
-void min_heap_insert_astar(search_node *node)
-{
-    nodes_border.push_back(node);
-    int new_index = nodes_border.size() - 1;
-    int heuristic_new_element = manhattan_distance(nodes_border[new_index]->state);
-    int f_new_element = heuristic_new_element + nodes_border[new_index]->path_cost;
-    while (new_index)
-    {
-        int father_index = floor((new_index - 1) / 2);
-        int heuristic_father = manhattan_distance(nodes_border[father_index]->state);
-        int f_father = heuristic_father + nodes_border[father_index]->path_cost;
-        if (f_father == f_new_element)
-        {
-            if (heuristic_new_element <= heuristic_father)
-            {
-                swap(nodes_border[father_index], nodes_border[new_index]);
-                new_index = father_index;
-            }
-            else
-            {
-                break;
-            }
-        }
-        else if (f_new_element < f_father)
-        {
-            swap(nodes_border[father_index], nodes_border[new_index]);
-            new_index = father_index;
-        }
-        else
-            break;
-    }
-}
-
-search_node *min_heap_pop_up_gbfs()
+search_node *min_heap_pop_up()
 {
     search_node *root_node = nodes_border[0];
     swap(nodes_border[0], nodes_border[nodes_border.size() - 1]);
@@ -178,28 +145,28 @@ search_node *min_heap_pop_up_gbfs()
         return root_node;
 
     int adjusted_index = 0;
-    int heuristic_adjusted = manhattan_distance(nodes_border[adjusted_index]->state);
+
     while (adjusted_index * 2 + 1 <= nodes_border.size() - 1)
     {
         int left_son_index = adjusted_index * 2 + 1;
-        int heuristic_left_son = manhattan_distance(nodes_border[left_son_index]->state);
         if (left_son_index == nodes_border.size() - 1)
         {
-            if (heuristic_adjusted > heuristic_left_son ||
-                (heuristic_adjusted == heuristic_left_son && nodes_border[adjusted_index]->path_cost <= nodes_border[left_son_index]->path_cost))
+            if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
+                (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
+                 nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
                 swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
             break;
         }
         else
         {
             int right_son_index = adjusted_index * 2 + 2;
-            int heuristic_right_son = manhattan_distance(nodes_border[right_son_index]->state);
-            if (heuristic_left_son == heuristic_right_son)
+            if (nodes_border[left_son_index]->f_value == nodes_border[right_son_index]->f_value)
             {
-                if (nodes_border[left_son_index]->path_cost > nodes_border[right_son_index]->path_cost)
+                if (nodes_border[left_son_index]->tiebreaker < nodes_border[right_son_index]->tiebreaker)
                 {
-                    if (heuristic_adjusted > heuristic_left_son ||
-                        (heuristic_adjusted == heuristic_left_son && nodes_border[adjusted_index]->path_cost <= nodes_border[left_son_index]->path_cost))
+                    if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
+                        (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
+                         nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
                     {
                         swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
                         adjusted_index = left_son_index;
@@ -209,8 +176,9 @@ search_node *min_heap_pop_up_gbfs()
                 }
                 else
                 {
-                    if (heuristic_adjusted > heuristic_right_son ||
-                        (heuristic_adjusted == heuristic_right_son && nodes_border[adjusted_index]->path_cost <= nodes_border[right_son_index]->path_cost))
+                    if (nodes_border[adjusted_index]->f_value > nodes_border[right_son_index]->f_value ||
+                        (nodes_border[adjusted_index]->f_value == nodes_border[right_son_index]->f_value &&
+                         nodes_border[adjusted_index]->tiebreaker >= nodes_border[right_son_index]->tiebreaker))
                     {
                         swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
                         adjusted_index = right_son_index;
@@ -219,10 +187,11 @@ search_node *min_heap_pop_up_gbfs()
                         break;
                 }
             }
-            else if (heuristic_left_son < heuristic_right_son)
+            else if (nodes_border[left_son_index]->f_value < nodes_border[right_son_index]->f_value)
             {
-                if (heuristic_adjusted > heuristic_left_son ||
-                    (heuristic_adjusted == heuristic_left_son && nodes_border[adjusted_index]->path_cost <= nodes_border[left_son_index]->path_cost))
+                if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
+                    (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
+                     nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
                 {
                     swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
                     adjusted_index = left_son_index;
@@ -232,92 +201,9 @@ search_node *min_heap_pop_up_gbfs()
             }
             else
             {
-                if (heuristic_adjusted > heuristic_right_son ||
-                    (heuristic_adjusted == heuristic_right_son && nodes_border[adjusted_index]->path_cost <= nodes_border[right_son_index]->path_cost))
-                {
-                    swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
-                    adjusted_index = right_son_index;
-                }
-                else
-                    break;
-            }
-        }
-    }
-
-    return root_node;
-}
-
-search_node *min_heap_pop_up_astar()
-{
-    search_node *root_node = nodes_border[0];
-    swap(nodes_border[0], nodes_border[nodes_border.size() - 1]);
-    nodes_border.pop_back();
-
-    if (nodes_border.empty())
-        return root_node;
-
-    int adjusted_index = 0;
-    int heuristic_adjusted = manhattan_distance(nodes_border[adjusted_index]->state);
-    int f_adjusted = heuristic_adjusted + nodes_border[adjusted_index]->path_cost;
-
-    while (adjusted_index * 2 + 1 <= nodes_border.size() - 1)
-    {
-        int left_son_index = adjusted_index * 2 + 1;
-        int heuristic_left_son = manhattan_distance(nodes_border[left_son_index]->state);
-        int f_left_son = heuristic_left_son + nodes_border[left_son_index]->path_cost;
-
-        if (left_son_index == nodes_border.size() - 1)
-        {
-            if (f_adjusted > f_left_son ||
-                (f_adjusted == f_left_son && heuristic_adjusted >= heuristic_left_son))
-                swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-            break;
-        }
-        else
-        {
-            int right_son_index = adjusted_index * 2 + 2;
-            int heuristic_right_son = manhattan_distance(nodes_border[right_son_index]->state);
-            int f_right_son = heuristic_right_son + nodes_border[right_son_index]->path_cost;
-            if (f_left_son == f_right_son)
-            {
-                if (heuristic_left_son < heuristic_right_son)
-                {
-                    if (f_adjusted > f_left_son ||
-                        (f_adjusted == f_left_son && heuristic_adjusted >= heuristic_left_son))
-                    {
-                        swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-                        adjusted_index = left_son_index;
-                    }
-                    else
-                        break;
-                }
-                else
-                {
-                    if (f_adjusted > f_right_son ||
-                        (f_adjusted == f_right_son && heuristic_adjusted >= heuristic_right_son))
-                    {
-                        swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
-                        adjusted_index = right_son_index;
-                    }
-                    else
-                        break;
-                }
-            }
-            else if (f_left_son < f_right_son)
-            {
-                if (f_adjusted > f_left_son ||
-                    (f_adjusted == f_left_son && heuristic_adjusted >= heuristic_left_son))
-                {
-                    swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-                    adjusted_index = left_son_index;
-                }
-                else
-                    break;
-            }
-            else
-            {
-                if (f_adjusted > f_right_son ||
-                    (f_adjusted == f_right_son && heuristic_adjusted >= heuristic_right_son))
+                if (nodes_border[adjusted_index]->f_value > nodes_border[right_son_index]->f_value ||
+                    (nodes_border[adjusted_index]->f_value == nodes_border[right_son_index]->f_value &&
+                     nodes_border[adjusted_index]->tiebreaker >= nodes_border[right_son_index]->tiebreaker))
                 {
                     swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
                     adjusted_index = right_son_index;

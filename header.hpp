@@ -112,7 +112,7 @@ search_node *gbfs()
     while (!nodes_border.empty())
     {
         search_node *current_node;
-        current_node = min_heap_pop_up_gbfs();
+        current_node = min_heap_pop_up();
 
         if (is_state_visited(current_node->state))
         {
@@ -138,10 +138,14 @@ search_node *gbfs()
                 int aux = new_node->state[pos_zero + movement];
                 new_node->state[pos_zero + movement] = '0';
                 new_node->state[pos_zero] = aux;
+
                 new_node->path_cost = current_node->path_cost + 1;
+                new_node->tiebreaker = -current_node->path_cost;
+                new_node->f_value = manhattan_distance(new_node->state);
+
                 if (!current_node->parent || !(new_node->state == current_node->parent->state))
                 {
-                    min_heap_insert_gbfs(new_node);
+                    min_heap_insert(new_node);
                 }
                 else
                     delete new_node;
@@ -166,7 +170,7 @@ search_node *astar()
     while (!nodes_border.empty())
     {
         search_node *current_node;
-        current_node = min_heap_pop_up_astar();
+        current_node = min_heap_pop_up();
 
         if (is_state_visited(current_node->state))
         {
@@ -193,10 +197,15 @@ search_node *astar()
                 int aux = new_node->state[pos_zero + movement];
                 new_node->state[pos_zero + movement] = '0';
                 new_node->state[pos_zero] = aux;
+
                 new_node->path_cost = current_node->path_cost + 1;
+                int manhattan = manhattan_distance(new_node->state);
+                new_node->tiebreaker = manhattan;
+                new_node->f_value = manhattan + new_node->path_cost;
+
                 if (!current_node->parent || !(new_node->state == current_node->parent->state))
                 {
-                    min_heap_insert_astar(new_node);
+                    min_heap_insert(new_node);
                 }
                 else
                     delete new_node;
