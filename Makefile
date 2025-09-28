@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -I.
-DEPS = main.cpp header.hpp
+DEPS = main.cpp header.hpp structs.hpp
 	
 main: $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
