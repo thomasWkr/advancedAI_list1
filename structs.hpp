@@ -5,6 +5,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <algorithm>
+#include <chrono>
 
 #define eight_puzzle_goal "012345678"
 #define fifteen_puzzle_goal "012345678ABCDE"
@@ -20,7 +21,7 @@ struct search_node
 vector<search_node *> nodes_border;
 unordered_map<string, int> visited_states;
 int expanded_nodes;
-int heuristic_value_sum;
+double heuristic_value_sum;
 int heuristic_value_calls;
 
 int manhattan_distance(string state)
@@ -279,7 +280,7 @@ search_node *min_heap_pop_up_astar()
             int f_right_son = heuristic_right_son + nodes_border[right_son_index]->path_cost;
             if (f_left_son == f_right_son)
             {
-                if (heuristic_left_son <= heuristic_right_son)
+                if (heuristic_left_son < heuristic_right_son)
                 {
                     if (f_adjusted > f_left_son ||
                         (f_adjusted == f_left_son && heuristic_adjusted >= heuristic_left_son))

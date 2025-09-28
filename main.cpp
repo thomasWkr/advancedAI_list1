@@ -1,31 +1,66 @@
 #include "header.hpp"
+#include <cstring>
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    string alg = argv[1];
-    string root_state;
-
-    int j = 0;
-    for (int i = 2; i < argc; ++i)
+    if (argc < 2)
     {
-        if (argv[i][1] == ',' || argv[i][2] == ',' || i == argc - 1)
+        cerr << "Algoritmo não especificado!" << endl;
+        return 1;
+    }
+
+    string alg = argv[1];
+
+    // If there are command-line puzzle arguments, parse them
+    if (argc > 2)
+    {
+        string root_state;
+        int j = 0;
+        for (int i = 2; i < argc; i++)
         {
-            root_state += argv[i][0];
-            if (j != 8 && j != 15)
+            if (strchr(argv[i], ',') || i == argc - 1)
             {
-                cout << "Número invalido de tiles" << endl;
-                break;
+                for (int k = 0; argv[i][k] != '\0'; ++k)
+                {
+                    if (argv[i][k] != ',')
+                        root_state += argv[i][k];
+                }
+                if (j != 8 && j != 15)
+                {
+                    cout << "Número invalido de tiles" << endl;
+                    root_state.clear();
+                    j = 0;
+                    continue;
+                }
+                resolve_puzzle(root_state, alg);
+                root_state.clear();
+                j = 0;
             }
-            resolve_puzzle(root_state, alg);
-            root_state = "";
-            j = 0;
+            else
+            {
+                root_state += argv[i];
+                j++;
+            }
         }
-        else
+    }
+    else
+    {
+        string line;
+        while (getline(cin, line))
         {
-            root_state += argv[i];
-            j++;
+            line.erase(remove_if(line.begin(), line.end(), ::isspace), line.end());
+            if (line.empty())
+                continue;
+            if (line.size() == 8 || line.size() == 9 || line.size() == 15 || line.size() == 16)
+            {
+                resolve_puzzle(line, alg);
+            }
+            else
+            {
+                cout << "Número invalido de tiles: " << line << endl;
+            }
         }
     }
 
