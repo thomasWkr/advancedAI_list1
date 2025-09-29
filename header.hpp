@@ -112,7 +112,7 @@ search_node *gbfs()
     while (!nodes_border.empty())
     {
         search_node *current_node;
-        current_node = min_heap_pop_up();
+        current_node = pop_from_queue();
 
         if (is_state_visited(current_node->state))
         {
@@ -139,13 +139,12 @@ search_node *gbfs()
                 new_node->state[pos_zero + movement] = '0';
                 new_node->state[pos_zero] = aux;
 
-                new_node->path_cost = current_node->path_cost + 1;
-                new_node->tiebreaker = -current_node->path_cost;
-                new_node->f_value = manhattan_distance(new_node->state);
-
                 if (!current_node->parent || !(new_node->state == current_node->parent->state))
                 {
-                    min_heap_insert(new_node);
+                    new_node->path_cost = current_node->path_cost + 1;
+                    new_node->tiebreaker = -current_node->path_cost;
+                    new_node->f_value = manhattan_distance(new_node->state);
+                    insert_in_queue(new_node);
                 }
                 else
                     delete new_node;
@@ -170,7 +169,7 @@ search_node *astar()
     while (!nodes_border.empty())
     {
         search_node *current_node;
-        current_node = min_heap_pop_up();
+        current_node = pop_from_queue();
 
         if (is_state_visited(current_node->state))
         {
@@ -184,7 +183,6 @@ search_node *astar()
             return current_node;
 
         expanded_nodes++;
-
         int pos_zero = current_node->state.find('0');
         string actions = get_actions(pos_zero);
 
@@ -198,20 +196,80 @@ search_node *astar()
                 new_node->state[pos_zero + movement] = '0';
                 new_node->state[pos_zero] = aux;
 
-                new_node->path_cost = current_node->path_cost + 1;
-                int manhattan = manhattan_distance(new_node->state);
-                new_node->tiebreaker = manhattan;
-                new_node->f_value = manhattan + new_node->path_cost;
-
                 if (!current_node->parent || !(new_node->state == current_node->parent->state))
                 {
-                    min_heap_insert(new_node);
+                    new_node->path_cost = current_node->path_cost + 1;
+                    int manhattan = manhattan_distance(new_node->state);
+                    new_node->tiebreaker = manhattan;
+                    new_node->f_value = manhattan + new_node->path_cost;
+                    insert_in_queue(new_node);
                 }
                 else
                     delete new_node;
             }
             movement += 2;
         }
+    }
+    return NULL;
+}
+
+tuple<int, search_node *> recursive_search(search_node *node, int f_limit)
+{
+    if (node->f_value > f_limit)
+        return {node->f_value, NULL};
+
+    if (node->state == eight_puzzle_goal)
+        return {0, node};
+
+    expanded_nodes++;
+    int next_limit = -1;
+
+    int pos_zero = node->state.find('0');
+    string actions = get_actions(pos_zero);
+
+    int movement = -3;
+    for (int i = 0; i < 4; i++)
+    {
+        if (actions[i] - '0')
+        {
+            search_node *new_node = create_node(node->state, node);
+            int aux = new_node->state[pos_zero + movement];
+            new_node->state[pos_zero + movement] = '0';
+            new_node->state[pos_zero] = aux;
+
+            if (!node->parent || !(new_node->state == node->parent->state))
+            {
+                new_node->path_cost = node->path_cost + 1;
+                int manhattan = manhattan_distance(new_node->state);
+                new_node->f_value = manhattan + new_node->path_cost;
+                auto [rec_limit, solution] = recursive_search(new_node, f_limit);
+                if (solution)
+                    return {0, solution};
+
+                if (next_limit == -1 || next_limit < rec_limit)
+                    next_limit = rec_limit;
+            }
+            else
+                delete new_node;
+        }
+        movement += 2;
+    }
+    return {next_limit, NULL};
+}
+
+search_node *idastar(search_node *root_node)
+{
+    int manhattan = manhattan_distance(root_node->state);
+    root_node->f_value = manhattan + root_node->path_cost;
+    int f_limit = root_node->f_value;
+    while (f_limit != -1)
+    {
+        auto [new_f_limit, solution] = recursive_search(root_node, f_limit);
+        if (solution)
+            return solution;
+        else
+            delete solution;
+        f_limit = new_f_limit;
     }
     return NULL;
 }
@@ -236,6 +294,8 @@ void resolve_puzzle(string root_state, string alg)
         final_node = gbfs();
     else if (alg == "-astar")
         final_node = astar();
+    else if (alg == "-idastar")
+        final_node = idastar(root_node);
 
     if (final_node)
     {
@@ -244,9 +304,10 @@ void resolve_puzzle(string root_state, string alg)
         auto duration = end - start;
         auto seconds = chrono::duration_cast<std::chrono::duration<double>>(duration).count();
 
+        int manhattan = manhattan_distance(root_state);
         double heuristic_medium = heuristic_value_sum / heuristic_value_calls;
 
-        cout << expanded_nodes << "," << solution_length(final_node) - 1 << "," << seconds << "," << heuristic_medium << "," << manhattan_distance(root_state) << endl;
+        cout << expanded_nodes << "," << solution_length(final_node) - 1 << "," << seconds << "," << heuristic_medium << "," << manhattan << endl;
         // print_path(final_node);
     }
 }

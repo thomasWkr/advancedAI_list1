@@ -34,13 +34,15 @@ int main(int argc, char *argv[])
                     j = 0;
                     continue;
                 }
-                resolve_puzzle(root_state, alg);
+                // resolve_puzzle(root_state, alg);
+                cout << root_state << endl;
                 root_state.clear();
                 j = 0;
             }
             else
             {
-                root_state += argv[i];
+                if (argv[i])
+                    root_state += argv[i];
                 j++;
             }
         }

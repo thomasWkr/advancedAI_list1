@@ -6,17 +6,18 @@
 #include <unordered_map>
 #include <algorithm>
 #include <chrono>
+#include <tuple>
 
 #define eight_puzzle_goal "012345678"
-#define fifteen_puzzle_goal "012345678ABCDE"
+#define fifteen_puzzle_goal "0123456789ABCDEF"
 
 using namespace std;
 struct search_node
 {
     search_node *parent = NULL;
-    short path_cost = 0;
-    short tiebreaker = 0;
-    short f_value = 0;
+    int path_cost = 0;
+    int tiebreaker = 0;
+    int f_value = 0;
     string state;
 };
 
@@ -101,9 +102,34 @@ void mark_state_visited(string state, int distance)
     visited_states[state] = distance;
 }
 
-int state_visited_distance(string state)
+void insert_in_queue(search_node *node)
 {
-    return visited_states[state];
+    if (nodes_border.empty())
+        nodes_border.push_back(node);
+    else
+    {
+        int i = 0;
+        while (i < nodes_border.size())
+        {
+            if (node->f_value < nodes_border[i]->f_value || (node->f_value == nodes_border[i]->f_value && node->tiebreaker <= nodes_border[i]->tiebreaker))
+            {
+                nodes_border.insert(nodes_border.begin() + i, node);
+                break;
+            }
+            i++;
+        }
+        if (i == nodes_border.size())
+        {
+            nodes_border.push_back(node);
+        }
+    }
+}
+
+search_node *pop_from_queue()
+{
+    search_node *node = nodes_border[0];
+    nodes_border.erase(nodes_border.begin());
+    return node;
 }
 
 void min_heap_insert(search_node *node)
@@ -153,7 +179,7 @@ search_node *min_heap_pop_up()
         {
             if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
                 (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
-                 nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
+                 nodes_border[adjusted_index]->tiebreaker > nodes_border[left_son_index]->tiebreaker))
                 swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
             break;
         }
@@ -166,7 +192,7 @@ search_node *min_heap_pop_up()
                 {
                     if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
                         (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
-                         nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
+                         nodes_border[adjusted_index]->tiebreaker > nodes_border[left_son_index]->tiebreaker))
                     {
                         swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
                         adjusted_index = left_son_index;
