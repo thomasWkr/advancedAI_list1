@@ -5,6 +5,9 @@
 #include <cmath>
 #include <unordered_map>
 #include <algorithm>
+#include <unordered_map>
+#include <algorithm>
+#include <chrono>
 #include <chrono>
 #include <tuple>
 
@@ -18,12 +21,14 @@ struct search_node
     int path_cost = 0;
     int tiebreaker = 0;
     int f_value = 0;
+    int order = 0;
     string state;
 };
 
 vector<search_node *> nodes_border;
 unordered_map<string, int> visited_states;
 int expanded_nodes;
+int global_order;
 double heuristic_value_sum;
 int heuristic_value_calls;
 
@@ -38,6 +43,31 @@ int manhattan_distance(string state)
         {
             int vertical_distance = abs(i % 3 - number % 3);
             int horizontal_distance = abs(floor(i / 3) - floor(number / 3));
+            final_distance += (horizontal_distance + vertical_distance);
+        }
+    }
+
+    heuristic_value_sum += final_distance;
+    heuristic_value_calls++;
+    return final_distance;
+}
+
+int manhattan_distance_15(string state)
+{
+    int final_distance = 0;
+
+    for (int i = 0; i < state.length(); i++)
+    {
+        int number;
+        if (state[i] - '0' < 10)
+            number = state[i] - '0';
+        else
+            number = state[i] - '7';
+
+        if (number)
+        {
+            int vertical_distance = abs(i % 4 - number % 4);
+            int horizontal_distance = abs(floor(i / 4) - floor(number / 4));
             final_distance += (horizontal_distance + vertical_distance);
         }
     }
@@ -92,6 +122,31 @@ string get_actions(int zero_position)
     return actions;
 }
 
+string get_actions_15(int zero_position)
+{
+    string actions = "0000";
+    if (floor(zero_position / 4) != 0)
+    {
+        actions[0] = '1';
+    }
+
+    if (zero_position % 4)
+    {
+        actions[1] = '1';
+    }
+
+    if (zero_position % 4 != 3)
+    {
+        actions[2] = '1';
+    }
+
+    if (floor(zero_position / 4) != 3)
+    {
+        actions[3] = '1';
+    }
+    return actions;
+}
+
 bool is_state_visited(string state)
 {
     return visited_states.find(state) != visited_states.end();
@@ -132,117 +187,6 @@ search_node *pop_from_queue()
     return node;
 }
 
-void min_heap_insert(search_node *node)
-{
-    nodes_border.push_back(node);
-    int new_index = nodes_border.size() - 1;
-    while (new_index)
-    {
-        int father_index = floor((new_index - 1) / 2);
-        if (nodes_border[new_index]->f_value == nodes_border[father_index]->f_value)
-        {
-            if (nodes_border[new_index]->tiebreaker <= nodes_border[father_index]->tiebreaker)
-            {
-                swap(nodes_border[father_index], nodes_border[new_index]);
-                new_index = father_index;
-            }
-            else
-            {
-                break;
-            }
-        }
-        else if (nodes_border[new_index]->f_value < nodes_border[father_index]->f_value)
-        {
-            swap(nodes_border[father_index], nodes_border[new_index]);
-            new_index = father_index;
-        }
-        else
-            break;
-    }
-}
-
-search_node *min_heap_pop_up()
-{
-    search_node *root_node = nodes_border[0];
-    swap(nodes_border[0], nodes_border[nodes_border.size() - 1]);
-    nodes_border.pop_back();
-
-    if (nodes_border.empty())
-        return root_node;
-
-    int adjusted_index = 0;
-
-    while (adjusted_index * 2 + 1 <= nodes_border.size() - 1)
-    {
-        int left_son_index = adjusted_index * 2 + 1;
-        if (left_son_index == nodes_border.size() - 1)
-        {
-            if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
-                (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
-                 nodes_border[adjusted_index]->tiebreaker > nodes_border[left_son_index]->tiebreaker))
-                swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-            break;
-        }
-        else
-        {
-            int right_son_index = adjusted_index * 2 + 2;
-            if (nodes_border[left_son_index]->f_value == nodes_border[right_son_index]->f_value)
-            {
-                if (nodes_border[left_son_index]->tiebreaker < nodes_border[right_son_index]->tiebreaker)
-                {
-                    if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
-                        (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
-                         nodes_border[adjusted_index]->tiebreaker > nodes_border[left_son_index]->tiebreaker))
-                    {
-                        swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-                        adjusted_index = left_son_index;
-                    }
-                    else
-                        break;
-                }
-                else
-                {
-                    if (nodes_border[adjusted_index]->f_value > nodes_border[right_son_index]->f_value ||
-                        (nodes_border[adjusted_index]->f_value == nodes_border[right_son_index]->f_value &&
-                         nodes_border[adjusted_index]->tiebreaker >= nodes_border[right_son_index]->tiebreaker))
-                    {
-                        swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
-                        adjusted_index = right_son_index;
-                    }
-                    else
-                        break;
-                }
-            }
-            else if (nodes_border[left_son_index]->f_value < nodes_border[right_son_index]->f_value)
-            {
-                if (nodes_border[adjusted_index]->f_value > nodes_border[left_son_index]->f_value ||
-                    (nodes_border[adjusted_index]->f_value == nodes_border[left_son_index]->f_value &&
-                     nodes_border[adjusted_index]->tiebreaker >= nodes_border[left_son_index]->tiebreaker))
-                {
-                    swap(nodes_border[adjusted_index], nodes_border[left_son_index]);
-                    adjusted_index = left_son_index;
-                }
-                else
-                    break;
-            }
-            else
-            {
-                if (nodes_border[adjusted_index]->f_value > nodes_border[right_son_index]->f_value ||
-                    (nodes_border[adjusted_index]->f_value == nodes_border[right_son_index]->f_value &&
-                     nodes_border[adjusted_index]->tiebreaker >= nodes_border[right_son_index]->tiebreaker))
-                {
-                    swap(nodes_border[adjusted_index], nodes_border[right_son_index]);
-                    adjusted_index = right_son_index;
-                }
-                else
-                    break;
-            }
-        }
-    }
-
-    return root_node;
-}
-
 void print_state(string state)
 {
     cout << state[0] << state[1] << state[2] << endl;
@@ -259,4 +203,68 @@ void print_path(search_node *node)
         print_state(aux_node->state);
         aux_node = aux_node->parent;
     }
+}
+
+// Min-heap for A* (min f, min h, LIFO)
+void min_heap_insert_astar(search_node *node)
+{
+    nodes_border.push_back(node);
+    int idx = nodes_border.size() - 1;
+    while (idx > 0)
+    {
+        int parent = floor((idx - 1) / 2);
+        if (nodes_border[idx]->f_value < nodes_border[parent]->f_value ||
+            (nodes_border[idx]->f_value == nodes_border[parent]->f_value &&
+             nodes_border[idx]->tiebreaker <= nodes_border[parent]->tiebreaker))
+        {
+            swap(nodes_border[idx], nodes_border[parent]);
+            idx = parent;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+search_node *min_heap_pop_astar()
+{
+    if (nodes_border.empty())
+        return NULL;
+    search_node *top = nodes_border[0];
+    nodes_border[0] = nodes_border.back();
+    nodes_border.pop_back();
+    int idx = 0, n = nodes_border.size();
+    while (true)
+    {
+        int left = 2 * idx + 1, right = 2 * idx + 2, smallest = idx;
+        if (left < n &&
+            (nodes_border[left]->f_value < nodes_border[smallest]->f_value ||
+             (nodes_border[left]->f_value == nodes_border[smallest]->f_value &&
+              nodes_border[left]->tiebreaker < nodes_border[smallest]->tiebreaker) ||
+             (nodes_border[left]->f_value == nodes_border[smallest]->f_value &&
+              nodes_border[left]->tiebreaker == nodes_border[smallest]->tiebreaker && nodes_border[left]->order > nodes_border[smallest]->order)))
+        {
+            smallest = left;
+        }
+        if (right < n &&
+            (nodes_border[right]->f_value < nodes_border[smallest]->f_value ||
+             (nodes_border[right]->f_value == nodes_border[smallest]->f_value &&
+              nodes_border[right]->tiebreaker < nodes_border[smallest]->tiebreaker) ||
+             (nodes_border[right]->f_value == nodes_border[smallest]->f_value &&
+              nodes_border[right]->tiebreaker == nodes_border[smallest]->tiebreaker && nodes_border[right]->order > nodes_border[smallest]->order)))
+        {
+            smallest = right;
+        }
+        if (smallest != idx)
+        {
+            swap(nodes_border[idx], nodes_border[smallest]);
+            idx = smallest;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return top;
 }

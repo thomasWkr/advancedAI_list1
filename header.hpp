@@ -2,8 +2,7 @@
 
 search_node *bfs()
 {
-    heuristic_value_calls = 1;
-    visited_states.clear();
+    heuristic_value_sum = 0;
 
     if (nodes_border[0]->state == eight_puzzle_goal)
         return nodes_border[0];
@@ -86,7 +85,7 @@ search_node *limited_dfs(search_node *node, int depth_limit)
 
 search_node *idfs(search_node *root_node)
 {
-    heuristic_value_calls = 1;
+    heuristic_value_sum = 0;
     for (int i = 0; i >= 0; i++)
     {
         search_node *solution = limited_dfs(root_node, i);
@@ -100,14 +99,6 @@ search_node *idfs(search_node *root_node)
 
 search_node *gbfs()
 {
-    heuristic_value_calls = 0;
-    visited_states.clear();
-
-    if (nodes_border[0]->state == eight_puzzle_goal)
-    {
-        heuristic_value_calls++;
-        return nodes_border[0];
-    }
 
     while (!nodes_border.empty())
     {
@@ -157,19 +148,11 @@ search_node *gbfs()
 
 search_node *astar()
 {
-    heuristic_value_calls = 0;
-    visited_states.clear();
-
-    if (nodes_border[0]->state == eight_puzzle_goal)
-    {
-        heuristic_value_calls++;
-        return nodes_border[0];
-    }
 
     while (!nodes_border.empty())
     {
         search_node *current_node;
-        current_node = pop_from_queue();
+        current_node = min_heap_pop_astar();
 
         if (is_state_visited(current_node->state))
         {
@@ -202,12 +185,65 @@ search_node *astar()
                     int manhattan = manhattan_distance(new_node->state);
                     new_node->tiebreaker = manhattan;
                     new_node->f_value = manhattan + new_node->path_cost;
-                    insert_in_queue(new_node);
+                    global_order++;
+                    new_node->order = global_order;
+                    min_heap_insert_astar(new_node);
                 }
                 else
                     delete new_node;
             }
             movement += 2;
+        }
+    }
+    return NULL;
+}
+
+search_node *astar_15()
+{
+    while (!nodes_border.empty())
+    {
+
+        search_node *current_node;
+        current_node = min_heap_pop_astar();
+
+        if (is_state_visited(current_node->state))
+        {
+            delete current_node;
+            continue;
+        }
+
+        mark_state_visited(current_node->state, 1);
+
+        if (current_node->state == fifteen_puzzle_goal)
+            return current_node;
+
+        expanded_nodes++;
+        int pos_zero = current_node->state.find('0');
+        string actions = get_actions_15(pos_zero);
+
+        int movement[] = {-4, -1, 1, 4};
+        for (int i = 0; i < 4; i++)
+        {
+            if (actions[i] - '0')
+            {
+                search_node *new_node = create_node(current_node->state, current_node);
+                int aux = new_node->state[pos_zero + movement[i]];
+                new_node->state[pos_zero + movement[i]] = '0';
+                new_node->state[pos_zero] = aux;
+
+                if (!current_node->parent || !(new_node->state == current_node->parent->state))
+                {
+                    new_node->path_cost = current_node->path_cost + 1;
+                    int manhattan = manhattan_distance_15(new_node->state);
+                    new_node->tiebreaker = manhattan;
+                    new_node->f_value = manhattan + new_node->path_cost;
+                    global_order++;
+                    new_node->order = global_order;
+                    min_heap_insert_astar(new_node);
+                }
+                else
+                    delete new_node;
+            }
         }
     }
     return NULL;
@@ -277,10 +313,15 @@ search_node *idastar(search_node *root_node)
 void resolve_puzzle(string root_state, string alg)
 {
     nodes_border.clear();
+    visited_states.clear();
     expanded_nodes = 0;
+    global_order = 0;
     heuristic_value_sum = 0;
+    heuristic_value_calls = 0;
 
     auto start = chrono::high_resolution_clock::now();
+
+    int manhattan = manhattan_distance(root_state);
 
     search_node *root_node = create_node(root_state, NULL);
     nodes_border.push_back(root_node);
@@ -293,7 +334,17 @@ void resolve_puzzle(string root_state, string alg)
     else if (alg == "-gbfs")
         final_node = gbfs();
     else if (alg == "-astar")
-        final_node = astar();
+    {
+        if (root_state.length() == 9)
+            final_node = astar();
+        else if (root_state.length() == 16)
+        {
+            heuristic_value_sum = 0;
+            heuristic_value_calls = 0;
+            manhattan = manhattan_distance_15(root_state);
+            final_node = astar_15();
+        }
+    }
     else if (alg == "-idastar")
         final_node = idastar(root_node);
 
@@ -304,7 +355,6 @@ void resolve_puzzle(string root_state, string alg)
         auto duration = end - start;
         auto seconds = chrono::duration_cast<std::chrono::duration<double>>(duration).count();
 
-        int manhattan = manhattan_distance(root_state);
         double heuristic_medium = heuristic_value_sum / heuristic_value_calls;
 
         cout << expanded_nodes << "," << solution_length(final_node) - 1 << "," << seconds << "," << heuristic_medium << "," << manhattan << endl;
